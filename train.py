@@ -83,8 +83,8 @@ class Net(nn.Module):
 
 
 if __name__ == "__main__":
-    BATCH_SIZE = 8
-    EPOCHS = 200
+    BATCH_SIZE = 128
+    EPOCHS = 1
     LEARNING_RATE = 1e-5  # 1e-3
     WEIGHTING_DECAY = 1e-5
     ANNOTATIONS_FILE = "/media/sedur/data/datasets/urbansound8k/UrbanSound8K/metadata/UrbanSound8K.csv"

@@ -60,20 +60,19 @@ if __name__ == "__main__":
     NUM_SAMPLES = 32256  # 22050
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
-    n_workers = 20  # 4
+    n_workers = 10  # 4
     encoder_layers = get_encoder_layers()
     decoder_layers = get_decoder_layers()
     config = wandb.config
     config.seed = 42  # random seed (default: 42)
     config.encoder_layers = encoder_layers
     config.decoder_layers = decoder_layers
+    config.bottleneck_width = 7680
     torch.manual_seed(config.seed)
-    mel_spectrogram = torchaudio.transforms.MelSpectrogram(sample_rate=SAMPLE_RATE,
-                                                           n_fft=1024,
-                                                           hop_length=512,
-                                                           n_mels=64,
-                                                           norm='slaney'
-                                                           )
+    spectrogram = torchaudio.transforms.Spectrogram(n_fft=1023,
+                                                    hop_length=512,
+                                                    normalized=True
+                                                    )
     vae = VariationalAutoEncoder(config)
     vae.load_state_dict(torch.load("fsdd_model.h5"))
     vae.eval()
@@ -87,7 +86,7 @@ if __name__ == "__main__":
 
     fsdd = FreeSpokenDigitDataset(ANNOTATIONS_FILE,
                                   AUDIO_DIR,
-                                  mel_spectrogram,
+                                  spectrogram,
                                   SAMPLE_RATE,
                                   NUM_SAMPLES,
                                   torch.device("cpu"))
@@ -111,13 +110,18 @@ if __name__ == "__main__":
                               "max": 10}
     signals, _ = sound_generator.generate(grams,
                                           sampled_min_max_values)
-    print(f"{torch.max(signals)}")
-    print(f"{torch.min(signals)}")
+    print(f"{torch.max(signals[0])}")
+    print(f"{torch.min(signals[0])}")
+
+    signal = signals[0].detach().numpy()
+    signal = signal / np.max(np.abs(signal))
     # convert spectrogram samples to audio
     # original_signals = sound_generator.convert_spectrograms_to_audio(
     #     sampled_specs, sampled_min_max_values)
 
     # save audio signals
+    save_path = "gensig.wav"
+    sf.write(save_path, signal, SAMPLE_RATE)
     # save_signals(signals, SAVE_DIR_GENERATED)
     # save_signals(original_signals, SAVE_DIR_ORIGINAL)
 

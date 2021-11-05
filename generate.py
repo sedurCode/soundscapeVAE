@@ -124,6 +124,8 @@ if __name__ == "__main__":
     sf.write(save_path, signal, SAMPLE_RATE)
     # save_signals(signals, SAVE_DIR_GENERATED)
     # save_signals(original_signals, SAVE_DIR_ORIGINAL)
+    a = 1
+    a = 2
 
 
 

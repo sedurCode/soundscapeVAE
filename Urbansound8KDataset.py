@@ -96,6 +96,82 @@ class UrbanSound8KDataset(Dataset):
         return array
 
 
+def get_encoder_layers():
+    layers = []   # in -> (N, 1, 513, 47)
+    layers.append({'layer_in':  1,
+                   'layer_out': 16,
+                   'kernel': 3,
+                   'stride': 2,
+                   'activation': True})
+    layers.append({'layer_in': 16,
+                   'layer_out': 32,
+                   'kernel': 3,
+                   'stride': 2,
+                   'activation': True})
+    layers.append({'layer_in':  32,
+                   'layer_out': 64,
+                   'kernel': 3,
+                   'stride': 2,
+                   'activation': True})
+    layers.append({'layer_in':  64,
+                   'layer_out': 128,
+                   'kernel': 3,
+                   'stride': 2,
+                   'activation': True})
+    layers.append({'layer_in': 128,
+                   'layer_out': 256,
+                   'kernel': 3,
+                   'stride': 2,
+                   'activation': True})
+    layers.append({'layer_in': 256,
+                   'layer_out': 512,
+                   'kernel': 4,
+                   'stride': 1,
+                   'activation': False})
+    return layers # out -> (N, 128, 21, 1)
+
+
+def get_decoder_layers():
+    layers = []
+    layers.append({'layer_in': 512,
+                   'layer_out': 256,
+                   'kernel': 4,
+                   'stride': 1,
+                   'out_padding': 0,
+                   'activation': True})
+    layers.append({'layer_in': 256,
+                   'layer_out': 128,
+                   'kernel': 3,
+                   'stride': 2,
+                   'out_padding': 1,
+                   'activation': True})
+    layers.append({'layer_in': 128,
+                   'layer_out': 64,
+                   'kernel': 3,
+                   'stride': 2,
+                   'out_padding': 1,
+                   'activation': True})
+    layers.append({'layer_in': 64,
+                   'layer_out': 32,
+                   'kernel': 3,
+                   'stride': 2,
+                   'out_padding': 1,
+                   'activation': True})
+    layers.append({'layer_in': 32,
+                   'layer_out': 16,
+                   'kernel': 3,
+                   'stride': 2,
+                   'out_padding': 1,
+                   'activation': True})
+    layers.append({'layer_in': 16,
+                   'layer_out': 1,
+                   'kernel': 3,
+                   'stride': 2,
+                   'out_padding': 1,
+                   'activation': False})
+    return layers  # out -> (N, 1, 513, 47)
+
+
 if __name__ == "__main__":
     ANNOTATIONS_FILE = "/media/sedur/data/datasets/urbansound8k/UrbanSound8K/metadata/UrbanSound8K.csv"
     AUDIO_DIR = "/media/sedur/data/datasets/urbansound8k/UrbanSound8K/audio"

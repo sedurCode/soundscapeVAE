@@ -134,50 +134,8 @@ def loss_function(output, input, mu, sigma, reconstruction_loss_weight):
     return reconstruction_loss_weight * BCE + KLD
 
 
-# def get_encoder_layers():
-#     layers = []
-#     layers.append({'layer_in':  1,
-#                    'layer_out': 16,
-#                    'kernel': 3,
-#                    'stride': 2,
-#                    'activation': True})
-#     layers.append({'layer_in': 16,
-#                    'layer_out': 32,
-#                    'kernel': 3,
-#                    'stride': 2,
-#                    'activation': True})
-#     layers.append({'layer_in':  32,
-#                    'layer_out': 64,
-#                    'kernel': 16,
-#                    'stride': 3,
-#                    'activation': False})
-#     return layers
-#
-#
-# def get_decoder_layers():
-#     layers = []
-#     layers.append({'layer_in': 64,
-#                    'layer_out': 32,
-#                    'kernel': 16,
-#                    'stride': 1,
-#                    'out_padding': 0,
-#                    'activation': True})
-#     layers.append({'layer_in': 32,
-#                    'layer_out': 16,
-#                    'kernel': 3,
-#                    'stride': 2,
-#                    'out_padding': 1,
-#                    'activation': True})
-#     layers.append({'layer_in': 16,
-#                    'layer_out': 1,
-#                    'kernel': 3,
-#                    'stride': 2,
-#                    'out_padding': 1,
-#                    'activation': False})
-#     return layers
-
 def get_encoder_layers():
-    layers = []   # in -> (N, 1, 513, 47)
+    layers = []
     layers.append({'layer_in':  1,
                    'layer_out': 16,
                    'kernel': 3,
@@ -190,52 +148,19 @@ def get_encoder_layers():
                    'activation': True})
     layers.append({'layer_in':  32,
                    'layer_out': 64,
-                   'kernel': 3,
-                   'stride': 2,
-                   'activation': True})
-    layers.append({'layer_in':  64,
-                   'layer_out': 128,
-                   'kernel': 3,
-                   'stride': 2,
-                   'activation': True})
-    layers.append({'layer_in': 128,
-                   'layer_out': 256,
-                   'kernel': 3,
-                   'stride': 2,
-                   'activation': True})
-    layers.append({'layer_in': 256,
-                   'layer_out': 512,
-                   'kernel': 4,
+                   'kernel': 16,
                    'stride': 1,
                    'activation': False})
-    return layers # out -> (N, 128, 21, 1)
+    return layers
 
 
 def get_decoder_layers():
     layers = []
-    layers.append({'layer_in': 512,
-                   'layer_out': 256,
-                   'kernel': 4,
-                   'stride': 1,
-                   'out_padding': 0,
-                   'activation': True})
-    layers.append({'layer_in': 256,
-                   'layer_out': 128,
-                   'kernel': 3,
-                   'stride': 2,
-                   'out_padding': 1,
-                   'activation': True})
-    layers.append({'layer_in': 128,
-                   'layer_out': 64,
-                   'kernel': 3,
-                   'stride': 2,
-                   'out_padding': 1,
-                   'activation': True})
     layers.append({'layer_in': 64,
                    'layer_out': 32,
-                   'kernel': 3,
-                   'stride': 2,
-                   'out_padding': 1,
+                   'kernel': 16,
+                   'stride': 1,
+                   'out_padding': 0,
                    'activation': True})
     layers.append({'layer_in': 32,
                    'layer_out': 16,
@@ -249,7 +174,7 @@ def get_decoder_layers():
                    'stride': 2,
                    'out_padding': 1,
                    'activation': False})
-    return layers  # out -> (N, 1, 513, 47)
+    return layers
 
 if __name__ == "__main__":
     encoder_layers = get_encoder_layers()
@@ -258,8 +183,7 @@ if __name__ == "__main__":
     
     config.encoder_layers = encoder_layers
     config.decoder_layers = decoder_layers
-    config.bottleneck_width = 7680
+    config.bottleneck_width = 64
     
     model = VariationalAutoEncoder(config)
-    summary(model.cuda(), (1, 512, 64))
-    # summary(model.cuda(), (1, 64, 64))  # (colors, mel_bins, time)
+    summary(model.cuda(), (1, 64, 64))  # (colors, mel_bins, time)

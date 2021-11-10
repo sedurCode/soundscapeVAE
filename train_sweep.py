@@ -21,16 +21,16 @@ matplotlib.style.use('ggplot')
 to_pil_image = torchvision.transforms.ToPILImage()
 
 
-def image_to_vid(images):
+def image_to_vid(images, outputs_dir):
     imgs = [np.array(to_pil_image(img)) for img in images]
-    imageio.mimsave('/media/sedur/data/datasets/mnist/outputs/generated_images.gif', imgs)
+    imageio.mimsave(os.path.join(outputs_dir, 'generated_images.gif', imgs))
 
 
-def save_reconstructed_images(recon_images, epoch):
-    save_image(recon_images.cpu(), f"/media/sedur/data/datasets/mnist/outputs/output{epoch}.jpg")
+def save_reconstructed_images(recon_images, epoch, outputs_dir):
+    save_image(recon_images.cpu(), os.path.join(outputs_dir, f"output{epoch}.jpg"))
 
 
-def save_loss_plot(train_loss, valid_loss):
+def save_loss_plot(train_loss, valid_loss, outputs_dir):
     # loss plots
     plt.figure(figsize=(10, 7))
     plt.plot(train_loss, color='orange', label='train loss')
@@ -38,7 +38,7 @@ def save_loss_plot(train_loss, valid_loss):
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    plt.savefig('/media/sedur/data/datasets/mnist/outputs/loss.jpg')
+    plt.savefig(os.path.join(outputs_dir, 'loss.jpg'))
     plt.show()
 
 
@@ -52,9 +52,8 @@ def plot_latent(model, data, num_batches=100):
             break
 
 
-def train_single_epoch(model, loop, loss_fn, optimiser, device, epoch, reconstruction_rate, epochs):
+def train_single_epoch(model, loop, loss_fn, optimiser, device, epoch, epochs):
     model.train()
-    elem_str = f"Loss_{epoch}"
     for batch_idx, (input, _) in loop:
         optimiser.zero_grad()  # backpropagate error and update weights
         input = input.to(device)
@@ -69,17 +68,17 @@ def train_single_epoch(model, loop, loss_fn, optimiser, device, epoch, reconstru
     return loss.item()
 
 
-def train(model, train_loader, test_loader, loss_fn, optimiser, scheduler, device, epochs, config, test_set):
+def train(model, train_loader, test_loader, loss_fn, optimiser, scheduler, device, epochs, config, test_set, outputs_dir):
     grid_images = []
     for i in range(epochs):
         loop = tqdm(enumerate(train_loader), total=len(train_loader), leave=False)
-        loss = train_single_epoch(model, loop, loss_fn, optimiser, device, i, config.reconstruction_rate, epochs)
+        loss = train_single_epoch(model, loop, loss_fn, optimiser, device, i, epochs)
         valid_epoch_loss, recon_images = validate(model, test_loader, test_set, device, loss_fn)
         wandb.log({"Train_Epoch_Loss": loss,
                    "Valid_epoch_loss": valid_epoch_loss})
         scheduler.step(loss)
         # save the reconstructed images from the validation loop
-        save_reconstructed_images(recon_images, i + 1)
+        save_reconstructed_images(recon_images, i + 1, outputs_dir)
         # convert the reconstructed images to PyTorch image grid format
         image_grid = make_grid(recon_images.detach().cpu())
         grid_images.append(image_grid)
@@ -109,10 +108,6 @@ def validate(model, dataloader, dataset, device, criterion):
 
 
 if __name__ == "__main__":
-    BATCH_SIZE = 64
-    EPOCHS = 10
-    LEARNING_RATE = 0.001  # 1e-5  # 1e-3
-    WEIGHTING_DECAY = 1e-5
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
     n_workers = 20
@@ -121,13 +116,7 @@ if __name__ == "__main__":
     outputs_path = os.path.join(dataset_path, "outputs/")
     config = wandb.config
     config.dataset = "mnist"
-    config.log_interval = 10 
-    config.batch_size = BATCH_SIZE  # input batch size for training (default: 64)
-    config.epochs = EPOCHS  # number of epochs to train (default: 10)
-    config.lr = LEARNING_RATE  # learning rate (default: 0.01)
-    config.lr_gamma = 0.9
-    config.no_cuda = False  # disables CUDA training
-    config.seed = 42  # random seed (default: 42)
+    config.log_interval = 10
     config.num_layers = 4
     config.output_sizes = [8, 16, 32, 64]
     config.kernels = (4, 4, 4, 4)
@@ -137,13 +126,16 @@ if __name__ == "__main__":
     config.output_padding = (0, 0, 0, 0)
     config.bottleneck_width = 32
     config.reconstruction_rate = 10
-    config.num_workers = 20
+    num_workers = 20
     torch.manual_seed(config.seed)
     model_name = wandb.run.name + "mnist_model.h5"
     transform = torchvision.transforms.Compose([
         torchvision.transforms.Resize((32, 32)),
         torchvision.transforms.ToTensor(),
     ])
+    outputs_dir = os.path.join('/media/sedur/data/datasets/mnist/outputs', wandb.run.name)
+    if os.path.isdir(outputs_dir) is False:
+        os.mkdir(outputs_dir)
     train_data = torchvision.datasets.MNIST(dataset_path,
                                             train=True,
                                             download=True,
@@ -152,7 +144,7 @@ if __name__ == "__main__":
     temp_loader = torch.utils.data.DataLoader(train_data,
                                               batch_size=pull_batch_size,
                                               shuffle=True,
-                                              num_workers=config.num_workers,
+                                              num_workers=num_workers,
                                               pin_memory=True)
     x_train, y_train = next(iter(temp_loader))
     train_data.data.to(device)
@@ -170,21 +162,17 @@ if __name__ == "__main__":
                                               batch_size=config.batch_size,
                                               shuffle=True)
     model = ConvolutionalVariationalAutoEncoder(config).to(device) # model = Net()
-    # loss_fn = nn.MSELoss().to(device)
     loss_fn = nn.BCELoss(reduction='sum').to(device)
-    # optimizer = torch.optim.Adam(model.parameters(),
-    #                              lr=LEARNING_RATE,
-    #                              weight_decay=WEIGHTING_DECAY
-    #                              )
     optimizer = torch.optim.Adam(model.parameters(),
-                                 lr=LEARNING_RATE
+                                 lr=config.lr,
                                  )
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=config.lr_gamma)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
     # scheduler = None
     wandb.watch(model, log="all", log_freq=100)
-    grid_images = train(model, train_loader, test_loader, loss_fn, optimizer, scheduler, device, EPOCHS, config, test_data)
-    image_to_vid(grid_images)
+    grid_images = train(model, train_loader, test_loader, loss_fn, optimizer,
+                        scheduler, device, config.epochs, config, test_data, outputs_dir)
+    image_to_vid(grid_images, outputs_dir)
     torch.save(model.state_dict(), os.path.join(outputs_path, model_name))
     wandb.save(os.path.join(outputs_path, model_name))
     wandb.finish()

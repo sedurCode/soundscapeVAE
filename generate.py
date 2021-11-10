@@ -5,6 +5,7 @@ import soundfile as sf
 from soundgenerator import SoundGenerator
 # from autoencoder import VAE
 # from train import SPECTROGRAMS_PATH
+from matplotlib import pyplot as plt
 import torch
 import wandb
 import torchaudio
@@ -53,6 +54,25 @@ def save_signals(signals, save_dir, sample_rate=22050):
         sf.write(save_path, signal, sample_rate)
 
 
+def plot_specgram(waveform, sample_rate, title="Spectrogram", xlim=None):
+  waveform = waveform.numpy()
+
+  num_channels, num_frames = waveform.shape
+  time_axis = torch.arange(0, num_frames) / sample_rate
+
+  figure, axes = plt.subplots(num_channels, 1)
+  if num_channels == 1:
+    axes = [axes]
+  for c in range(num_channels):
+    axes[c].specgram(waveform[c], Fs=sample_rate)
+    if num_channels > 1:
+      axes[c].set_ylabel(f'Channel {c+1}')
+    if xlim:
+      axes[c].set_xlim(xlim)
+  figure.suptitle(title)
+  plt.show(block=False)
+
+
 if __name__ == "__main__":
     # initialise sound generator
     # vae = VAE.load("model")
@@ -98,6 +118,7 @@ if __name__ == "__main__":
                             persistent_workers=True)
     grams, labels = next(iter(dataloader))
     print(f"{grams.size()}")
+    plot_specgram(grams[0, 0, :, :].detach().cpu(), SAMPLE_RATE, title="Original loaded", xlim=(0, 3.04))
     # sample spectrograms + min max values
     # sampled_specs, sampled_min_max_values = select_spectrograms(specs,
     #                                                             file_paths,
@@ -115,6 +136,7 @@ if __name__ == "__main__":
 
     signal = signals[0].detach().numpy()
     signal = signal / np.max(np.abs(signal))
+    plot_specgram(signal, SAMPLE_RATE, title="Generated Reconstructed", xlim=(0, 3.04))
     # convert spectrogram samples to audio
     # original_signals = sound_generator.convert_spectrograms_to_audio(
     #     sampled_specs, sampled_min_max_values)
@@ -124,7 +146,12 @@ if __name__ == "__main__":
     sf.write(save_path, signal, SAMPLE_RATE)
     # save_signals(signals, SAVE_DIR_GENERATED)
     # save_signals(original_signals, SAVE_DIR_ORIGINAL)
-
+    signals = sound_generator.convert_spectrograms_to_audio(grams, sampled_min_max_values)
+    signal = signals[0].detach().numpy()
+    signal = signal / np.max(np.abs(signal))
+    plot_specgram(signal, SAMPLE_RATE, title="Original Reconstructed", xlim=(0, 3.04))
+    save_path = "orisig.wav"
+    sf.write(save_path, signal, SAMPLE_RATE)
 
 
 
